@@ -1,4 +1,4 @@
-#include "qp_generator.h"
+#include "grad_traj_optimization/qp_generator.h"
 #include <stdio.h>
 #include <ros/ros.h>
 #include <ros/console.h>
