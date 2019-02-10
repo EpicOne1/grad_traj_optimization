@@ -172,7 +172,7 @@ bool GradTrajOptimizer::optimizeTrajectory(int step) {
   }
 
   /* reallocate segment time */
-  for (int i = 0; i < segment_time.size(); ++i) {
+  for (int i = 1; i < segment_time.size() - 1; ++i) {
     double len = sqrt(pow(Dp(0, 3 * (i - 1)) - Dp(0, 3 * i), 2) +
                       pow(Dp(1, 3 * (i - 1)) - Dp(1, 3 * i), 2) +
                       pow(Dp(2, 3 * (i - 1)) - Dp(2, 3 * i), 2));
@@ -301,7 +301,7 @@ void GradTrajOptimizer::getCostAndGradient(std::vector<double> dp, double &cost,
     Ldp = L.block(6 * s, 6, 6, num_dp);
 
     // discrete time step
-    double dt = segment_time(s) / 100.0;
+    double dt = segment_time(s) / 50.0;
 
     for (double t = 1e-3; t < segment_time(s); t += dt) {
       // get position,velocity
