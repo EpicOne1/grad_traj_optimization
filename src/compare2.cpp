@@ -26,32 +26,41 @@ void simplifyPath(vector<Eigen::Vector3d> &path, SDFMap &sdf_map) {
   vector<Eigen::Vector3d> path_sp;
   path_sp.push_back(path.front());
 
-  int cur_id = 1;
-  while (cur_id < path.size()) {
-    Eigen::Vector3d pt1 = path_sp.back();
-    Eigen::Vector3d pt2 = path[cur_id];
+  // int cur_id = 1;
+  // while (cur_id < path.size()) {
+  //   Eigen::Vector3d pt1 = path_sp.back();
+  //   Eigen::Vector3d pt2 = path[cur_id];
 
-    /* detect any collision between pt1 and pt2 */
-    bool collision = false;
-    Eigen::Vector3d dir = pt2 - pt1;
-    double lambda = 0.1;
-    while (lambda < 1.0) {
-      Eigen::Vector3d ptm = pt1 + lambda * dir;
-      // int occ = sdf_map.getOccupancy(ptm);
-      double dist = sdf_map.getDistance(ptm);
-      if (dist < 0.4) {
-        collision = true;
-        break;
-      }
-      lambda += 0.1;
-    }
+  //   /* detect any collision between pt1 and pt2 */
+  //   bool collision = false;
+  //   Eigen::Vector3d dir = pt2 - pt1;
+  //   double lambda = 0.1;
+  //   while (lambda < 1.0) {
+  //     Eigen::Vector3d ptm = pt1 + lambda * dir;
+  //     // int occ = sdf_map.getOccupancy(ptm);
+  //     double dist = sdf_map.getDistance(ptm);
+  //     if (dist < 0.4) {
+  //       collision = true;
+  //       break;
+  //     }
+  //     lambda += 0.1;
+  //   }
 
-    if (!collision) {
-      ++cur_id;
-    } else {
-      path_sp.push_back(path[cur_id - 1]);
-    }
+  //   if (!collision) {
+  //     ++cur_id;
+  //   } else {
+  //     path_sp.push_back(path[cur_id - 1]);
+  //   }
+  // }
+  // path_sp.push_back(path.back());
+
+  const int pt_num = path.size();
+  int num = 10;
+  while (num < pt_num) {
+    path_sp.push_back(path[num]);
+    num += 10;
   }
+
   path_sp.push_back(path.back());
 
   path = path_sp;
@@ -197,7 +206,6 @@ int main(int argc, char **argv) {
     grad_traj_opt.getSegmentTime(my_time);
     grad_traj_opt.getCoefficient(coeff);
     displayTrajectory(coeff, false);
-    ros::Duration(0.5).sleep();
 
     // // first step optimization
     // grad_traj_opt.optimizeTrajectory(OPT_FIRST_STEP);
@@ -208,7 +216,6 @@ int main(int argc, char **argv) {
     grad_traj_opt.optimizeTrajectory(OPT_SECOND_STEP);
     grad_traj_opt.getCoefficient(coeff);
     displayTrajectory(coeff, false);
-    ros::Duration(0.5).sleep();
 
     /* finish test flag */
     ++exp_num;
@@ -218,6 +225,7 @@ int main(int argc, char **argv) {
     std_msgs::Empty finish_msg;
     finish_pub.publish(finish_msg);
 
+    ros::Duration(0.5).sleep();
   }
 
   return 0;

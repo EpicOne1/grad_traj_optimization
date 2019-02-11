@@ -230,9 +230,8 @@ bool AStarPathFinder::searchPath(Eigen::Vector3d start_pt,
                                   continue;
                               }*/
 
-          if (neighborPtr->distance < 0.5) {
-            continue;
-          }
+          if (neighborPtr->distance < 0.4) continue;
+          // if (neighborPtr->occupancy > 0.5) continue;
 
           if (neighborPtr->id == -1) {
             continue;  // in closed set.

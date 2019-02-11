@@ -313,7 +313,7 @@ void GradTrajOptimizer::getCostAndGradient(std::vector<double> dp, double &cost,
     Ldp = L.block(6 * s, 6, 6, num_dp);
 
     // discrete time step
-    double dt = segment_time(s) / 50.0;
+    double dt = segment_time(s) / 20.0;
 
     for (double t = 1e-3; t < segment_time(s); t += dt) {
       // get position,velocity
