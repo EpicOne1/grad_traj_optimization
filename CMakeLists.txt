@@ -31,6 +31,7 @@ add_executable(compare2 src/compare2.cpp
   src/qp_generator.cpp 
   src/grad_traj_optimizer.cpp
   src/sdf_map.cpp
+  src/a_star.cpp
 )
 target_link_libraries(compare2 ${catkin_LIBRARIES} ${NLopt_LIBRARIES} 
   ${PROJECT_SOURCE_DIR}

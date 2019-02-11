@@ -19,8 +19,9 @@ using namespace std;
 
 class GradTrajOptimizer {
  public:
-  GradTrajOptimizer(ros::NodeHandle &node,
-                    const vector<Eigen::Vector3d> &waypoints);
+  GradTrajOptimizer();
+
+  void setPath(const vector<Eigen::Vector3d> &way_points);
 
   bool optimizeTrajectory(int step);
 
@@ -34,11 +35,6 @@ class GradTrajOptimizer {
   void updateSDFMap(vector<Eigen::Vector3d> obs);
 
  private:
-  /** signed distance field */
-
-  /** virtual boundary, 6x1 vector, for min x max x... min z,max z */
-  mutable Eigen::VectorXd boundary;
-
   /** coefficient of polynomials*/
   Eigen::MatrixXd coeff;
 
@@ -70,12 +66,11 @@ class GradTrajOptimizer {
   double deltat;
   double bos, vos, aos;
 
-  /** dynamics  parameter   from param server*/
+  /** dynamics parameter from param server*/
   double w_smooth, w_collision;
   double d0, r, alpha, v0, r_v, alpha_v, a0, r_a, alpha_a;
 
-  double mean_v;
-  double mean_a;
+  double mean_v, mean_a, init_time;
 
   /** optimizer*/
   nlopt::opt optimizer;

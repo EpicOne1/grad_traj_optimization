@@ -1,9 +1,6 @@
 #include "grad_traj_optimization/grad_traj_optimizer.h"
 
-GradTrajOptimizer::GradTrajOptimizer(
-    ros::NodeHandle &node, const vector<Eigen::Vector3d> &way_points) {
-  boundary = Eigen::VectorXd::Zero(6);
-
+GradTrajOptimizer::GradTrajOptimizer() {
   //-------------------------get parameter from server--------------------
   ros::param::get("/traj_opti_node1/alg", this->algorithm);
   ros::param::get("/traj_opti_node1/time_limit_1", this->time_limit_1);
@@ -32,7 +29,10 @@ GradTrajOptimizer::GradTrajOptimizer(
 
   ros::param::get("/traj_opti_node1/mean_v", mean_v);
   ros::param::get("/traj_opti_node1/mean_a", mean_a);
+  ros::param::get("/traj_opti_node1/init_time", init_time);
+}
 
+void GradTrajOptimizer::setPath(const vector<Eigen::Vector3d> &way_points) {
   /* generate optimization dependency */
   path = Eigen::MatrixXd::Zero(way_points.size(), 3);
   for (int i = 0; i < way_points.size(); ++i)
@@ -42,7 +42,7 @@ GradTrajOptimizer::GradTrajOptimizer(
   for (int i = 0; i < segment_time.size(); ++i) {
     double len = (path.row(i) - path.row(i + 1)).norm();
     if (i == 0 || i == segment_time.size()) {
-      segment_time(i) = mean_v / mean_a;
+      segment_time(i) = len / mean_v + init_time;
     } else {
       segment_time(i) = len / mean_v;
     }
@@ -172,11 +172,23 @@ bool GradTrajOptimizer::optimizeTrajectory(int step) {
   }
 
   /* reallocate segment time */
-  for (int i = 1; i < segment_time.size() - 1; ++i) {
-    double len = sqrt(pow(Dp(0, 3 * (i - 1)) - Dp(0, 3 * i), 2) +
-                      pow(Dp(1, 3 * (i - 1)) - Dp(1, 3 * i), 2) +
-                      pow(Dp(2, 3 * (i - 1)) - Dp(2, 3 * i), 2));
+  for (int i = 0; i < segment_time.size(); ++i) {
+    double len = 0.0;
+    // head and tail segment length
+    if (i == 0) {
+      len = sqrt(pow(Df(0, 0) - Dp(0, 0), 2) + pow(Df(1, 0) - Dp(1, 0), 2) +
+                 pow(Df(2, 0) - Dp(2, 0), 2));
+    } else if (i == segment_time.size() - 1) {
+      len = sqrt(pow(Df(0, 3) - Dp(0, 3 * (i - 1)), 2) +
+                 pow(Df(1, 3) - Dp(1, 3 * (i - 1)), 2) +
+                 pow(Df(2, 3) - Dp(2, 3 * (i - 1)), 2));
+    } else {
+      len = sqrt(pow(Dp(0, 3 * (i - 1)) - Dp(0, 3 * i), 2) +
+                 pow(Dp(1, 3 * (i - 1)) - Dp(1, 3 * i), 2) +
+                 pow(Dp(2, 3 * (i - 1)) - Dp(2, 3 * i), 2));
+    }
     segment_time(i) = len / mean_v;
+    if (i == 0 || i == segment_time.size() - 1) segment_time(i) += init_time;
   }
 
   /* update optimized coefficient */
@@ -333,31 +345,31 @@ void GradTrajOptimizer::getCostAndGradient(std::vector<double> dp, double &cost,
                                  dt;
       }
       // get velocity and accleration cost
-      if (step == 2) {
-        double cv = 0, ca = 0, gv = 0, ga = 0;
-        Eigen::Vector3d acc;
-        getAccelerationFromCoeff(acc, coe, s, t);
-        for (int k = 0; k < 3; k++) {
-          getVelocityPenalty(vel(k), cv);
-          cost_vel += cv * vel_norm * dt;
+      // if (step == 2) {
+      //   double cv = 0, ca = 0, gv = 0, ga = 0;
+      //   Eigen::Vector3d acc;
+      //   getAccelerationFromCoeff(acc, coe, s, t);
+      //   for (int k = 0; k < 3; k++) {
+      //     getVelocityPenalty(vel(k), cv);
+      //     cost_vel += cv * vel_norm * dt;
 
-          getAccelerationPenalty(acc(k), ca);
-          cost_acc += ca * vel_norm * dt;
-        }
-        for (int k = 0; k < 3; k++) {
-          getVelocityPenaltyGradient(vel(k), gv);
-          g_vel.row(k) =
-              g_vel.row(k) + (gv * vel_norm * T * V * Ldp +
-                              cv * (vel(k) / vel_norm) * T * V * Ldp) *
-                                 dt;
+      //     getAccelerationPenalty(acc(k), ca);
+      //     cost_acc += ca * vel_norm * dt;
+      //   }
+      //   for (int k = 0; k < 3; k++) {
+      //     getVelocityPenaltyGradient(vel(k), gv);
+      //     g_vel.row(k) =
+      //         g_vel.row(k) + (gv * vel_norm * T * V * Ldp +
+      //                         cv * (vel(k) / vel_norm) * T * V * Ldp) *
+      //                            dt;
 
-          getAccelerationPenaltyGradient(acc(k), ga);
-          g_acc.row(k) =
-              g_acc.row(k) + (ga * vel_norm * T * V * V * Ldp +
-                              ca * (vel(k) / vel_norm) * T * V * Ldp) *
-                                 dt;
-        }
-      }
+      //     getAccelerationPenaltyGradient(acc(k), ga);
+      //     g_acc.row(k) =
+      //         g_acc.row(k) + (ga * vel_norm * T * V * V * Ldp +
+      //                         ca * (vel(k) / vel_norm) * T * V * Ldp) *
+      //                            dt;
+      //   }
+      // }
     }
   }
 
@@ -370,11 +382,9 @@ void GradTrajOptimizer::getCostAndGradient(std::vector<double> dp, double &cost,
   cost =
       ws * cost_smooth + wc * cost_colli + wv * cost_vel + wa * cost_acc + 1e-3;
 
-  // cout << "smooth cost:" << ws * cost_smooth << "  collision cost" << wc *
-  // cost_colli
-  //      << " vel cost " << wv * cost_vel << "  acc cost: " << wa * cost_acc
-  //      << "  total:" << cost
-  //      << endl;
+  // cout << "smooth cost:" << ws * cost_smooth << "  collision cost"
+  //      << wc * cost_colli << " vel cost " << wv * cost_vel
+  //      << "  acc cost: " << wa * cost_acc << "  total:" << cost << endl;
 
   // sum up all gradient and convert
   gradient = ws * g_smooth + wc * g_colli + wv * g_vel + wa * g_acc;

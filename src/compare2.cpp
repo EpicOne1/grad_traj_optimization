@@ -3,6 +3,7 @@
 #include "std_msgs/Empty.h"
 
 #include <stdlib.h>
+#include "grad_traj_optimization/a_star.h"
 #include "grad_traj_optimization/display.h"
 #include "grad_traj_optimization/grad_traj_optimizer.h"
 
@@ -20,6 +21,41 @@ double start_vx, start_vy, start_vz;
 double goal_x, goal_y, goal_z;
 
 bool have_goal, have_map;
+
+void simplifyPath(vector<Eigen::Vector3d> &path, SDFMap &sdf_map) {
+  vector<Eigen::Vector3d> path_sp;
+  path_sp.push_back(path.front());
+
+  int cur_id = 1;
+  while (cur_id < path.size()) {
+    Eigen::Vector3d pt1 = path_sp.back();
+    Eigen::Vector3d pt2 = path[cur_id];
+
+    /* detect any collision between pt1 and pt2 */
+    bool collision = false;
+    Eigen::Vector3d dir = pt2 - pt1;
+    double lambda = 0.1;
+    while (lambda < 1.0) {
+      Eigen::Vector3d ptm = pt1 + lambda * dir;
+      // int occ = sdf_map.getOccupancy(ptm);
+      double dist = sdf_map.getDistance(ptm);
+      if (dist < 0.4) {
+        collision = true;
+        break;
+      }
+      lambda += 0.1;
+    }
+
+    if (!collision) {
+      ++cur_id;
+    } else {
+      path_sp.push_back(path[cur_id - 1]);
+    }
+  }
+  path_sp.push_back(path.back());
+
+  path = path_sp;
+}
 
 void mapCallback(const sensor_msgs::PointCloud2 &msg) {
   pcl::fromROSMsg(msg, latest_cloud);
@@ -74,52 +110,94 @@ int main(int argc, char **argv) {
   const int use_map_num = 10;
   int exp_num = 0;
 
+  /* init traj generator */
+  GradTrajOptimizer grad_traj_opt;
+  grad_traj_opt.initSDFMap(Eigen::Vector3d(40, 40, 5),
+                           Eigen::Vector3d(-40 / 2, -40 / 2, 0.0), 0.2);
+
+  /* init path finder */
+  AStarPathFinder *path_finder = new AStarPathFinder();
+  Eigen::Vector3i gn;
+  gn(0) = ceil(40 / 0.2), gn(1) = ceil(40 / 0.2), gn(2) = ceil(5 / 0.2);
+  path_finder->initGridNodeMap(gn, 0.2, Eigen::Vector3d(-40 / 2, -40 / 2, 0.0));
+
+  /* init sdf */
+  SDFMap sdf_map(Eigen::Vector3d(-40 / 2, -40 / 2, 0.0), 0.2,
+                 Eigen::Vector3d(40, 40, 5));
+
   /* main loop */
   while (ros::ok()) {
     /* wait for map and sg ready */
     while (ros::ok()) {
       if (have_map && have_goal) break;
-      ros::Duration(0.5).sleep();
+      ros::Duration(0.1).sleep();
       ros::spinOnce();
     }
     cout << "[1]: Map and SG ok!" << endl;
+
+    /* manage map */
+    if (exp_num % use_map_num == 0) {
+      vector<Eigen::Vector3d> obss;
+      for (int i = 0; i < latest_cloud.points.size(); ++i) {
+        pcl::PointXYZ pt = latest_cloud.points[i];
+        obss.push_back(Eigen::Vector3d(pt.x, pt.y, pt.z));
+      }
+      grad_traj_opt.updateSDFMap(obss);
+
+      sdf_map.resetBuffer();
+      for (int i = 0; i < int(obss.size()); ++i) {
+        sdf_map.setOccupancy(obss[i]);
+      }
+      sdf_map.updateESDF3d();
+
+      path_finder->linkLocalMap(sdf_map);
+    }
 
     // path finding
     Eigen::Vector3d start, end;
     start(0) = start_x, start(1) = start_y, start(2) = start_z;
     end(0) = goal_x, end(1) = goal_y, end(2) = goal_z;
 
-    vector<Eigen::Vector3d> path;
-    const double lambda = 0.2;
-    for (int i = 0; i <= 5; ++i) {
-      Eigen::Vector3d mid_pt = (1 - lambda * i) * start + lambda * i * end;
-      path.push_back(mid_pt);
+    path_finder->resetNode();
+    path_finder->resetPath();
+    path_finder->searchPath(start, end);
+
+    vector<Eigen::Vector3d> path = path_finder->getPath();
+
+    /* simplify path */
+    cout << "path size bf sp: " << path.size() << endl;
+    simplifyPath(path, sdf_map);
+    if (path.size() == 2) {
+      path.clear();
+      const double lambda = 0.2;
+      for (int i = 0; i <= 5; ++i) {
+        Eigen::Vector3d mid_pt = (1 - lambda * i) * start + lambda * i * end;
+        path.push_back(mid_pt);
+      }
     }
+    cout << "path size af sp: " << path.size() << endl;
+
     point_num = path.size();
+
+    /* straight line initialization */
+    // const double lambda = 0.2;
+    // for (int i = 0; i <= 5; ++i) {
+    //   Eigen::Vector3d mid_pt = (1 - lambda * i) * start + lambda * i * end;
+    //   path.push_back(mid_pt);
+    // }
 
     //  display  waypoints in rviz
     visualizeSetPoints(path);
     cout << "Way points created" << endl;
 
-    /* convert map */
-    vector<Eigen::Vector3d> obss;
-    for (int i = 0; i < latest_cloud.points.size(); ++i) {
-      pcl::PointXYZ pt = latest_cloud.points[i];
-      obss.push_back(Eigen::Vector3d(pt.x, pt.y, pt.z));
-    }
-
-    // optimization procedure
-    GradTrajOptimizer grad_traj_opt(node, path);
-    grad_traj_opt.initSDFMap(Eigen::Vector3d(40, 40, 5),
-                             Eigen::Vector3d(-40 / 2, -40 / 2, 0.0), 0.2);
-    grad_traj_opt.updateSDFMap(obss);
+    /* generate traj */
+    grad_traj_opt.setPath(path);
 
     Eigen::MatrixXd coeff;
-    grad_traj_opt.getCoefficient(coeff);
-    grad_traj_opt.getSegmentTime(my_time);
-    displayTrajectory(coeff, false);
+    // grad_traj_opt.getCoefficient(coeff);
+    // displayTrajectory(coeff, false);
 
-    // first step optimization
+    // // first step optimization
     // grad_traj_opt.optimizeTrajectory(OPT_FIRST_STEP);
     // grad_traj_opt.getCoefficient(coeff);
     // displayTrajectory(coeff, false);
@@ -127,6 +205,7 @@ int main(int argc, char **argv) {
     // second step optimization
     grad_traj_opt.optimizeTrajectory(OPT_SECOND_STEP);
     grad_traj_opt.getCoefficient(coeff);
+    grad_traj_opt.getSegmentTime(my_time);
     displayTrajectory(coeff, false);
 
     /* finish test flag */
@@ -136,6 +215,8 @@ int main(int argc, char **argv) {
 
     std_msgs::Empty finish_msg;
     finish_pub.publish(finish_msg);
+
+    ros::Duration(0.5).sleep();
   }
 
   return 0;
