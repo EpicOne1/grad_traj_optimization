@@ -194,8 +194,10 @@ int main(int argc, char **argv) {
     grad_traj_opt.setPath(path);
 
     Eigen::MatrixXd coeff;
-    // grad_traj_opt.getCoefficient(coeff);
-    // displayTrajectory(coeff, false);
+    grad_traj_opt.getSegmentTime(my_time);
+    grad_traj_opt.getCoefficient(coeff);
+    displayTrajectory(coeff, false);
+    ros::Duration(0.5).sleep();
 
     // // first step optimization
     // grad_traj_opt.optimizeTrajectory(OPT_FIRST_STEP);
@@ -205,8 +207,8 @@ int main(int argc, char **argv) {
     // second step optimization
     grad_traj_opt.optimizeTrajectory(OPT_SECOND_STEP);
     grad_traj_opt.getCoefficient(coeff);
-    grad_traj_opt.getSegmentTime(my_time);
     displayTrajectory(coeff, false);
+    ros::Duration(0.5).sleep();
 
     /* finish test flag */
     ++exp_num;
@@ -216,7 +218,6 @@ int main(int argc, char **argv) {
     std_msgs::Empty finish_msg;
     finish_pub.publish(finish_msg);
 
-    ros::Duration(0.5).sleep();
   }
 
   return 0;
