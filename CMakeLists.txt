@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   visualization_msgs
   NLopt
   pcl_conversions
+  kdtree
 )
 find_package(Eigen3 REQUIRED)
 
@@ -32,6 +33,7 @@ add_executable(compare2 src/compare2.cpp
   src/grad_traj_optimizer.cpp
   src/sdf_map.cpp
   src/a_star.cpp
+  src/path_finder.cpp
 )
 target_link_libraries(compare2 ${catkin_LIBRARIES} ${NLopt_LIBRARIES} 
   ${PROJECT_SOURCE_DIR}
