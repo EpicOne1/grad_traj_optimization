@@ -12,6 +12,8 @@
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl_conversions/pcl_conversions.h>
+#include <fstream>
+#include <grad_traj_optimization/polynomial_traj.hpp>
 #include "sensor_msgs/PointCloud.h"
 
 using namespace std;
@@ -52,62 +54,6 @@ void displayPathWithColor(vector<Eigen::Vector3d> path, double resolution,
   poly_traj_pub.publish(mk);
   ros::Duration(0.01).sleep();
 }
-
-class PolynomialTraj {
- private:
-  vector<double> times;        // time of each segment
-  vector<vector<double>> cxs;  // coefficient of x of each segment
-  vector<vector<double>> cys;  // coefficient of y of each segment
-  vector<vector<double>> czs;  // coefficient of z of each segment
-
-  double time_sum;
-  int num_seg;
-
- public:
-  PolynomialTraj(/* args */) {}
-  ~PolynomialTraj() {}
-
-  void reset() {
-    times.clear(), cxs.clear(), cys.clear(), czs.clear();
-    time_sum = 0.0, num_seg = 0;
-  }
-
-  void addSegment(vector<double> cx, vector<double> cy, vector<double> cz,
-                  double t) {
-    cxs.push_back(cx), cys.push_back(cy), czs.push_back(cz), times.push_back(t);
-  }
-
-  void init() {
-    num_seg = times.size();
-    time_sum = 0.0;
-    for (int i = 0; i < times.size(); ++i) {
-      time_sum += times[i];
-    }
-  }
-
-  double getTimeSum() { return this->time_sum; }
-
-  Eigen::Vector3d evaluate(double t) {
-    /* detetrmine segment num */
-    int idx = 0;
-    while (times[idx] < t) {
-      t -= times[idx];
-      ++idx;
-    }
-
-    /* evaluation */
-    int order = cxs[idx].size();
-    Eigen::VectorXd cx(order), cy(order), cz(order), tv(order);
-    for (int i = 0; i < order; ++i) {
-      cx(i) = cxs[idx][i], cy(i) = cys[idx][i], cz(i) = czs[idx][i];
-      tv(order - 1 - i) = std::pow(t, double(i));
-    }
-
-    Eigen::Vector3d pt;
-    pt(0) = tv.dot(cx), pt(1) = tv.dot(cy), pt(2) = tv.dot(cz);
-    return pt;
-  }
-};
 
 void mapCallback(const sensor_msgs::PointCloud2 &msg) {
   pcl::fromROSMsg(msg, latest_cloud);
@@ -197,6 +143,9 @@ int main(int argc, char **argv) {
     start(0) = start_x, start(1) = start_y, start(2) = start_z;
     end(0) = goal_x, end(1) = goal_y, end(2) = goal_z;
 
+    cout << "[2]: start: " << start.transpose() << ", goal: " << end.transpose()
+         << endl;
+
     Point point_s, point_g;
     point_s.x = start_x, point_s.y = start_y, point_s.z = start_z;
     point_g.x = goal_x, point_g.y = goal_y, point_g.z = goal_z;
@@ -256,6 +205,7 @@ int main(int argc, char **argv) {
       cout << "total_time: " << time_search + time_opt << endl;
 
       /* convert coefficient to poly_traj */
+      cout << "ha";
       PolynomialTraj poly_traj;
       for (int i = 0; i < coeff.rows(); ++i) {
         vector<double> cx(6), cy(6), cz(6);
@@ -270,16 +220,37 @@ int main(int argc, char **argv) {
         poly_traj.addSegment(cx, cy, cz, ts);
       }
       poly_traj.init();
-
-      double time_sum = poly_traj.getTimeSum();
-      double eval_t = 0.0;
-      vector<Eigen::Vector3d> traj_vis;
-      while (eval_t < time_sum) {
-        Eigen::Vector3d pt = poly_traj.evaluate(eval_t);
-        traj_vis.push_back(pt);
-        eval_t += 0.01;
-      }
+      vector<Eigen::Vector3d> traj_vis = poly_traj.getTraj();
       displayPathWithColor(traj_vis, 0.1, Eigen::Vector4d(0, 1, 0, 1), 1);
+
+      /* evaluation */
+      double time_sum, length, mean_v, max_v, mean_a, max_a, jerk;
+      time_sum = poly_traj.getTimeSum();
+      length = poly_traj.getLength();
+      jerk = poly_traj.getJerk();
+      poly_traj.getMeanAndMaxVel(mean_v, max_v);
+      poly_traj.getMeanAndMaxAcc(mean_a, max_a);
+
+      cout << "test2:" << exp_num + 1 << ", success:" << 1
+           << ", time search:" << time_search << ", time opt:" << time_opt
+           << ", time traj:" << time_sum << ", length:" << length
+           << ", jerk:" << jerk << ", mean_v:" << mean_v << ", max_v:" << max_v
+           << ", mean_a:" << mean_a << ", max_a:" << max_a << "\n";
+
+      std::ofstream file(
+          "/home/bzhouai/workspaces/plan_ws/src/uav_planning_bm/resource/"
+          "test2.txt",
+          std::ios::app);
+      if (file.fail()) {
+        cout << "open file error!\n";
+        return -1;
+      }
+      file << "test2:" << exp_num + 1 << ", success:" << 1
+           << ", time search:" << time_search << ", time opt:" << time_opt
+           << ", time traj:" << time_sum << ", length:" << length
+           << ", jerk:" << jerk << ", mean_v:" << mean_v << ", max_v:" << max_v
+           << ", mean_a:" << mean_a << ", max_a:" << max_a << "\n";
+      file.close();
 
       // displayTrajectory(coeff, false);
 
