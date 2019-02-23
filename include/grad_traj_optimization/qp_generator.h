@@ -4,71 +4,72 @@
 #include <Eigen/Eigen>
 #include <vector>
 
-
 class TrajectoryGenerator {
+ private:
+  std::vector<double> qp_cost;
+  Eigen::MatrixXd _A;  // Mapping matrix
+  Eigen::MatrixXd _Q;  // Hessian matrix
+  Eigen::MatrixXd _C;  // Selection matrix
+  Eigen::MatrixXd _L;  // A.inv() * C.transpose()
 
-private:
-		std::vector<double> qp_cost;
-        Eigen::MatrixXd _A; // Mapping matrix
-        Eigen::MatrixXd _Q; // Hessian matrix
-        Eigen::MatrixXd _C; // Selection matrix
-        Eigen::MatrixXd _L; // A.inv() * C.transpose()
+  Eigen::MatrixXd _R;
+  Eigen::MatrixXd _Rff;
+  Eigen::MatrixXd _Rpp;
+  Eigen::MatrixXd _Rpf;
+  Eigen::MatrixXd _Rfp;
 
-        Eigen::MatrixXd _R;
-        Eigen::MatrixXd _Rff;
-        Eigen::MatrixXd _Rpp;
-        Eigen::MatrixXd _Rpf;
-        Eigen::MatrixXd _Rfp;
+  Eigen::VectorXd _Pxi;
+  Eigen::VectorXd _Pyi;
+  Eigen::VectorXd _Pzi;
 
-        Eigen::VectorXd _Pxi;
-        Eigen::VectorXd _Pyi;
-        Eigen::VectorXd _Pzi;
+  Eigen::VectorXd _Dx;
+  Eigen::VectorXd _Dy;
+  Eigen::VectorXd _Dz;
 
-        Eigen::VectorXd _Dx;
-        Eigen::VectorXd _Dy;
-        Eigen::VectorXd _Dz;
-public:
-        Eigen::MatrixXd _Path;
-        Eigen::VectorXd _Time;
+ public:
+  Eigen::MatrixXd _Path;
+  Eigen::VectorXd _Time;
 
-        TrajectoryGenerator();
+  TrajectoryGenerator();
 
-        ~TrajectoryGenerator();
+  ~TrajectoryGenerator();
 
-        Eigen::MatrixXd PolyQPGeneration(
-            const Eigen::MatrixXd &Path,
-            const Eigen::Vector3d &Vel,
-            const Eigen::Vector3d &Acc,
-            const Eigen::VectorXd &Time,
-            const int &type);
-        
-        Eigen::MatrixXd PloyCoeffGeneration(
-            const Eigen::MatrixXd &PathCorridor,
-            const Eigen::MatrixXd &PathConnect,
-            const Eigen::VectorXd &Radius,
-            const Eigen::VectorXd &Path_Radius,
-            const Eigen::VectorXd &Time,
-            const Eigen::MatrixXd &vel,
-            const Eigen::MatrixXd &acc,
-            const double maxVel,
-            const double maxAcc );
+  Eigen::MatrixXd PolyQPGeneration(const Eigen::MatrixXd &Path,
+                                   const Eigen::Vector3d &Vel,
+                                   const Eigen::Vector3d &Acc,
+                                   const Eigen::VectorXd &Time,
+                                   const int &type);
 
-        std::vector<double> getCost();
+  Eigen::MatrixXd PolyKinoGeneration(const Eigen::MatrixXd &Path,
+                                     const Eigen::MatrixXd &Vel,
+                                     const Eigen::MatrixXd &Acc,
+                                     const Eigen::VectorXd &Time,
+                                     const int &type);
 
-        void StackOptiDep(); // Stack the optimization's dependency, the intermediate matrix and initial derivatives
+  Eigen::MatrixXd PloyCoeffGeneration(
+      const Eigen::MatrixXd &PathCorridor, const Eigen::MatrixXd &PathConnect,
+      const Eigen::VectorXd &Radius, const Eigen::VectorXd &Path_Radius,
+      const Eigen::VectorXd &Time, const Eigen::MatrixXd &vel,
+      const Eigen::MatrixXd &acc, const double maxVel, const double maxAcc);
 
-        std::pair< Eigen::MatrixXd, Eigen::MatrixXd > getInitialD(); // Initial Derivatives variable for the following optimization 
+  std::vector<double> getCost();
 
-        Eigen::MatrixXd getA();
-        Eigen::MatrixXd getQ();        
-        Eigen::MatrixXd getC();
-        Eigen::MatrixXd getL();
+  void StackOptiDep();  // Stack the optimization's dependency, the intermediate
+                        // matrix and initial derivatives
 
-        Eigen::MatrixXd getR();
-        Eigen::MatrixXd getRpp();
-        Eigen::MatrixXd getRff();
-        Eigen::MatrixXd getRfp();
-        Eigen::MatrixXd getRpf();
+  std::pair<Eigen::MatrixXd, Eigen::MatrixXd>
+  getInitialD();  // Initial Derivatives variable for the following optimization
+
+  Eigen::MatrixXd getA();
+  Eigen::MatrixXd getQ();
+  Eigen::MatrixXd getC();
+  Eigen::MatrixXd getL();
+
+  Eigen::MatrixXd getR();
+  Eigen::MatrixXd getRpp();
+  Eigen::MatrixXd getRff();
+  Eigen::MatrixXd getRfp();
+  Eigen::MatrixXd getRpf();
 };
 
 #endif

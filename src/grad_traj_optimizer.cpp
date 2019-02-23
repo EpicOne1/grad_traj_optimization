@@ -32,6 +32,38 @@ GradTrajOptimizer::GradTrajOptimizer() {
   ros::param::get("/traj_opti_node1/init_time", init_time);
 }
 
+void GradTrajOptimizer::setKinoPath(Eigen::MatrixXd &Pos, Eigen::MatrixXd &Vel,
+                                    Eigen::MatrixXd &Acc,
+                                    Eigen::VectorXd &Time) {
+  path = Pos;
+
+  segment_time = Time;
+
+  TrajectoryGenerator generator;
+  // coeff = generator.PolyQPGeneration(path, vel, acc, segment_time, type);
+  coeff = generator.PolyKinoGeneration(Pos, Vel, Acc, Time, 1);
+  generator.StackOptiDep();
+  R = generator.getR();
+  Rff = generator.getRff();
+  Rpp = generator.getRpp();
+  Rpf = generator.getRpf();
+  Rfp = generator.getRfp();
+  L = generator.getL();
+  A = generator.getA();
+  C = generator.getC();
+
+  std::pair<Eigen::MatrixXd, Eigen::MatrixXd> d = generator.getInitialD();
+  initial_dp = origin_dp = Dp = d.first;
+  Df = d.second;
+
+  V.resize(6, 6);
+  for (int i = 0; i < 5; ++i) V(i, i + 1) = i + 1;
+
+  num_dp = Dp.cols();
+  num_df = Df.cols();
+  num_point = segment_time.rows() + 1;
+}
+
 void GradTrajOptimizer::setPath(const vector<Eigen::Vector3d> &way_points) {
   /* generate optimization dependency */
   path = Eigen::MatrixXd::Zero(way_points.size(), 3);

@@ -5,7 +5,7 @@
 #include <stdlib.h>
 // #include "grad_traj_optimization/a_star.h"
 // #include <grad_traj_optimization/rrgPathFinder.h>
-#include <grad_traj_optimization/path_finder.h>
+#include <grad_traj_optimization/hybrid_astar.h>
 #include "grad_traj_optimization/display.h"
 #include "grad_traj_optimization/grad_traj_optimizer.h"
 
@@ -114,8 +114,16 @@ int main(int argc, char **argv) {
                            Eigen::Vector3d(-40 / 2, -40 / 2, 0.0), 0.2);
 
   /* init path finder */
-  rrtPathFinder path_finder;
-  path_finder.setParam(0.5, 0.2, 5.0, 10);
+  unique_ptr<HybridAStarPathFinder> path_finder;
+  path_finder.reset(new HybridAStarPathFinder(node));
+  path_finder->setParameterAuto();  // need to modify launch
+
+  Eigen::Vector3i gn;
+  gn(0) = ceil(40 / 0.2), gn(1) = ceil(40 / 0.2), gn(2) = ceil(5.0 / 0.2);
+  path_finder->initGridNodeMap(gn, 0.2, Eigen::Vector3d(-40 / 2, -40 / 2, 0.0));
+
+  SDFMap sdf_map(Eigen::Vector3d(-40 / 2, -40 / 2, 0.0), 0.2,
+                 Eigen::Vector3d(40, 40, 5));
 
   /* main loop */
   while (ros::ok()) {
@@ -135,59 +143,49 @@ int main(int argc, char **argv) {
         obss.push_back(Eigen::Vector3d(pt.x, pt.y, pt.z));
       }
       grad_traj_opt.updateSDFMap(obss);
-      path_finder.setInput(latest_cloud);
+
+      sdf_map.resetBuffer(Eigen::Vector3d(-40 / 2, -40 / 2, 0.0),
+                          Eigen::Vector3d(40 / 2, 40 / 2, 5.0));
+      for (int i = 0; i < int(obss.size()); ++i) {
+        sdf_map.setOccupancy(obss[i]);
+      }
+      sdf_map.updateESDF3d();
+      path_finder->linkLocalMap(sdf_map);
     }
 
+    /* manage start and goal */
+    Eigen::Vector3d start_pt, start_vel, start_acc, end_pt, end_vel;
+    start_pt(0) = start_x, start_pt(1) = start_y, start_pt(2) = start_z;
+    start_vel(0) = start_vx, start_vel(1) = start_vy, start_vel(2) = start_vz;
+    end_pt(0) = goal_x, end_pt(1) = goal_y, end_pt(2) = goal_z;
+    start_acc.setZero(), end_vel.setZero();
+
     /* path finding */
-    Eigen::Vector3d start, end;
-    start(0) = start_x, start(1) = start_y, start(2) = start_z;
-    end(0) = goal_x, end(1) = goal_y, end(2) = goal_z;
+    ros::Time t1, t2;
 
-    cout << "[2]: start: " << start.transpose() << ", goal: " << end.transpose()
-         << endl;
+    t1 = ros::Time::now();
+    path_finder->resetNode();
+    path_finder->resetPath();
 
-    Point point_s, point_g;
-    point_s.x = start_x, point_s.y = start_y, point_s.z = start_z;
-    point_g.x = goal_x, point_g.y = goal_y, point_g.z = goal_z;
+    int status = path_finder->searchPath(start_pt, start_vel, start_acc, end_pt,
+                                         end_vel, false);
 
-    ros::Time t1 = ros::Time::now();
+    t2 = ros::Time::now();
+    double time_search = (t2 - t1).toSec();
+    cout << "time in search: " << time_search << endl;
 
-    path_finder.reset();
-    path_finder.setPt(point_s, point_g, -20, 20, -20, 20, 0, 5, 0, 1, 10, 50000,
-                      0.15, 0.05);
-    path_finder.RRTpathFind(0.05);
-
-    // vector<Eigen::Vector3d> path = path_finder.getPath();
-    if (!path_finder.path_find_state) {
-      ROS_WARN("[2]: can't find a path");
+    if (status == NO_PATH) {
+      cout << "[2]:no path" << endl;
     } else {
-      ros::Time t2 = ros::Time::now();
-      double time_search = (t2 - t1).toSec();
-      cout << "time in search: " << time_search << endl;
+      Eigen::MatrixXd Pos, Vel, Acc;
+      Eigen::VectorXd Time;
+      path_finder->getKinoTrajMat(Pos, Vel, Acc, Time);
 
-      Eigen::MatrixXd path_mat = path_finder.getPath().first;
-      cout << "path:\n" << path_mat << endl;
-      vector<Eigen::Vector3d> path;
-      for (int i = 0; i < path_mat.rows(); ++i) {
-        if (i == 1) continue;
-        if (i == path_mat.rows() - 2) continue;
-        Eigen::Vector3d wp = path_mat.row(i);
-        path.push_back(wp);
-      }
-
-      if (path.size() == 2) {
-        Eigen::Vector3d mid = 0.5 * (path[0] + path[1]);
-        path.insert(path.begin() + 1, mid);
-      }
-      point_num = path.size();
-      cout << "p num: " << point_num << endl;
-
-      visualizeSetPoints(path);
+      // visualizeSetPoints(path);
 
       /* generate traj */
       t1 = ros::Time::now();
-
-      grad_traj_opt.setPath(path);
+      grad_traj_opt.setKinoPath(Pos, Vel, Acc, Time);
       Eigen::MatrixXd coeff;
       Eigen::VectorXd time_sgm;
       grad_traj_opt.getSegmentTime(time_sgm);
@@ -205,7 +203,6 @@ int main(int argc, char **argv) {
       cout << "total_time: " << time_search + time_opt << endl;
 
       /* convert coefficient to poly_traj */
-      cout << "ha";
       PolynomialTraj poly_traj;
       for (int i = 0; i < coeff.rows(); ++i) {
         vector<double> cx(6), cy(6), cz(6);
@@ -253,11 +250,10 @@ int main(int argc, char **argv) {
       file.close();
 
       // displayTrajectory(coeff, false);
-
-      cout << "[2]: finish test." << endl;
     }
 
     /* finish test flag */
+    cout << "[2]: finish test." << endl;
     ++exp_num;
     have_goal = false;
     if (exp_num % use_map_num == 0) have_map = false;

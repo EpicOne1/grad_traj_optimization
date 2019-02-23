@@ -23,6 +23,9 @@ class GradTrajOptimizer {
 
   void setPath(const vector<Eigen::Vector3d> &way_points);
 
+  void setKinoPath(Eigen::MatrixXd &Pos, Eigen::MatrixXd &Vel,
+                   Eigen::MatrixXd &Acc, Eigen::VectorXd &Time);
+
   bool optimizeTrajectory(int step);
 
   void getCoefficient(Eigen::MatrixXd &coeff);
