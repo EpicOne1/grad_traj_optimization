@@ -15,14 +15,13 @@ void HybridAStarPathFinder::setParameterAuto() {
   // ros::param::get("/kgb_traj/horizon", horizon);
   // ros::param::get("/kgb_traj/lambda_heu", lambda_heu);
 
-  max_tau = 0.4;
+  max_tau = 1.0;
   max_vel = 3.0;
   max_acc = 2.0;
-  w_time = 15.0;
+  w_time = 10.0;
   horizon = 50.0;
   lambda_heu = 5.0;
 }
-
 
 void HybridAStarPathFinder::initGridNodeMap(Eigen::Vector3i grid_num,
                                             double _resolution,

@@ -130,7 +130,7 @@ int main(int argc, char **argv) {
     /* wait for map and sg ready */
     while (ros::ok()) {
       if (have_map && have_goal) break;
-      ros::Duration(0.1).sleep();
+      // ros::Duration(0.1).sleep();
       ros::spinOnce();
     }
     cout << "[2]: Map and SG ok!" << endl;
@@ -183,71 +183,118 @@ int main(int argc, char **argv) {
 
       // visualizeSetPoints(path);
 
-      /* generate traj */
-      t1 = ros::Time::now();
-      grad_traj_opt.setKinoPath(Pos, Vel, Acc, Time);
-      Eigen::MatrixXd coeff;
-      Eigen::VectorXd time_sgm;
-      grad_traj_opt.getSegmentTime(time_sgm);
-      my_time = time_sgm;
-      // grad_traj_opt.getCoefficient(coeff);
-      // displayTrajectory(coeff, false);
+      /* only for front end evaluation */
+      // double acc_cost2 = 0.0;
+      // for (int i = 0; i < Time.rows(); ++i) {
+      //   vector<double> cx(6), cy(6), cz(6);
+      //   std::fill(cx.begin(), cx.begin() + 3, 0.0);
+      //   std::fill(cy.begin(), cy.begin() + 3, 0.0);
+      //   std::fill(cz.begin(), cz.begin() + 3, 0.0);
+      //   cx[3] = Acc(i, 0) / 2.0, cy[3] = Acc(i, 1) / 2.0,
+      //   cz[3] = Acc(i, 2) / 2.0;
+      //   cx[4] = Vel(i, 0), cy[4] = Vel(i, 1), cz[4] = Vel(i, 2);
+      //   cx[5] = Pos(i, 0), cy[5] = Pos(i, 1), cz[5] = Pos(i, 2);
 
-      // second step optimization
-      grad_traj_opt.optimizeTrajectory(OPT_SECOND_STEP);
-      grad_traj_opt.getCoefficient(coeff);
+      //   poly_traj.addSegment(cx, cy, cz, Time(i));
 
-      t2 = ros::Time::now();
-      double time_opt = (t2 - t1).toSec();
-      cout << "time in opt: " << time_opt << endl;
-      cout << "total_time: " << time_search + time_opt << endl;
+      //   /* acc cost */
+      //   acc_cost2 += Acc.row(i).squaredNorm() * Time(i);
+      // }
+      // poly_traj.init();
+      // cout << "[2]: acc cost for compare: " << acc_cost2 << endl;
 
-      /* convert coefficient to poly_traj */
-      PolynomialTraj poly_traj;
-      for (int i = 0; i < coeff.rows(); ++i) {
-        vector<double> cx(6), cy(6), cz(6);
-        for (int j = 0; j < 6; ++j) {
-          cx[j] = coeff(i, j), cy[j] = coeff(i, j + 6),
-          cz[j] = coeff(i, j + 12);
+      // vector<Eigen::Vector3d> traj_vis_path = poly_traj.getTraj();
+      // displayPathWithColor(traj_vis_path, 0.1, Eigen::Vector4d(1, 1, 0, 1),
+      // 2);
+
+      // double acc_cost = poly_traj.getAccCost();
+      // double time_sum_path = poly_traj.getTimeSum();
+      // cout << "test2:" << exp_num + 1 << "solve_time:" << time_search
+      //      << ",traj_time:" << time_sum_path << ",acc_cost:" << acc_cost
+      //      << endl;
+
+      // std::ofstream file(
+      //     "/home/bzhouai/workspaces/plan_ws/src/uav_planning_bm/resource/"
+      //     "front2.txt",
+      //     std::ios::app);
+      // if (file.fail()) {
+      //   cout << "open file error!\n";
+      //   return -1;
+      // }
+      // file << "test2:" << exp_num + 1 << "solve_time:" << time_search
+      //      << ",traj_time:" << time_sum_path << ",acc_cost:" << acc_cost
+      //      << "\n";
+      // file.close();
+
+      bool compare_optimize = true;
+      if (compare_optimize) {
+        t1 = ros::Time::now();
+        grad_traj_opt.setKinoPath(Pos, Vel, Acc, Time);
+        Eigen::MatrixXd coeff;
+        Eigen::VectorXd time_sgm;
+        grad_traj_opt.getSegmentTime(time_sgm);
+        my_time = time_sgm;
+        // grad_traj_opt.getCoefficient(coeff);
+        // displayTrajectory(coeff, false);
+
+        // second step optimization
+        grad_traj_opt.optimizeTrajectory(OPT_SECOND_STEP);
+        grad_traj_opt.getCoefficient(coeff);
+
+        t2 = ros::Time::now();
+        double time_opt = (t2 - t1).toSec();
+        cout << "time in opt: " << time_opt << endl;
+        cout << "total_time: " << time_search + time_opt << endl;
+
+        /* convert coefficient to poly_traj */
+        PolynomialTraj poly_traj;
+        for (int i = 0; i < coeff.rows(); ++i) {
+          vector<double> cx(6), cy(6), cz(6);
+          for (int j = 0; j < 6; ++j) {
+            cx[j] = coeff(i, j), cy[j] = coeff(i, j + 6),
+            cz[j] = coeff(i, j + 12);
+          }
+          reverse(cx.begin(), cx.end());
+          reverse(cy.begin(), cy.end());
+          reverse(cz.begin(), cz.end());
+          double ts = time_sgm(i);
+          poly_traj.addSegment(cx, cy, cz, ts);
         }
-        reverse(cx.begin(), cx.end());
-        reverse(cy.begin(), cy.end());
-        reverse(cz.begin(), cz.end());
-        double ts = time_sgm(i);
-        poly_traj.addSegment(cx, cy, cz, ts);
-      }
-      poly_traj.init();
-      vector<Eigen::Vector3d> traj_vis = poly_traj.getTraj();
-      displayPathWithColor(traj_vis, 0.1, Eigen::Vector4d(0, 1, 0, 1), 1);
+        poly_traj.init();
+        vector<Eigen::Vector3d> traj_vis = poly_traj.getTraj();
+        displayPathWithColor(traj_vis, 0.1, Eigen::Vector4d(0, 1, 0, 1), 1);
 
-      /* evaluation */
-      double time_sum, length, mean_v, max_v, mean_a, max_a, jerk;
-      time_sum = poly_traj.getTimeSum();
-      length = poly_traj.getLength();
-      jerk = poly_traj.getJerk();
-      poly_traj.getMeanAndMaxVel(mean_v, max_v);
-      poly_traj.getMeanAndMaxAcc(mean_a, max_a);
+        /* evaluation */
+        double time_sum, length, mean_v, max_v, mean_a, max_a, jerk;
+        time_sum = poly_traj.getTimeSum();
+        length = poly_traj.getLength();
+        jerk = poly_traj.getJerk();
+        poly_traj.getMeanAndMaxVel(mean_v, max_v);
+        poly_traj.getMeanAndMaxAcc(mean_a, max_a);
 
-      cout << "test2:" << exp_num + 1 << ", success:" << 1
-           << ", time search:" << time_search << ", time opt:" << time_opt
-           << ", time traj:" << time_sum << ", length:" << length
-           << ", jerk:" << jerk << ", mean_v:" << mean_v << ", max_v:" << max_v
-           << ", mean_a:" << mean_a << ", max_a:" << max_a << "\n";
+        cout << "test2:" << exp_num + 1 << ", success:" << 1
+             << ", time search:" << time_search << ", time opt:" << time_opt
+             << ", time traj:" << time_sum << ", length:" << length
+             << ", jerk:" << jerk << ", mean_v:" << mean_v
+             << ", max_v:" << max_v << ", mean_a:" << mean_a
+             << ", max_a:" << max_a << "\n";
 
-      std::ofstream file(
-          "/home/bzhouai/workspaces/plan_ws/src/uav_planning_bm/resource/"
-          "test2.txt",
-          std::ios::app);
-      if (file.fail()) {
-        cout << "open file error!\n";
-        return -1;
-      }
-      file << "test2:" << exp_num + 1 << ", success:" << 1
-           << ", time search:" << time_search << ", time opt:" << time_opt
-           << ", time traj:" << time_sum << ", length:" << length
-           << ", jerk:" << jerk << ", mean_v:" << mean_v << ", max_v:" << max_v
-           << ", mean_a:" << mean_a << ", max_a:" << max_a << "\n";
-      file.close();
+        std::ofstream file(
+            "/home/bzhouai/workspaces/plan_ws/src/uav_planning_bm/resource/"
+            "test2.txt",
+            std::ios::app);
+        if (file.fail()) {
+          cout << "open file error!\n";
+          return -1;
+        }
+        file << "test2:" << exp_num + 1 << ", success:" << 1
+             << ", time search:" << time_search << ", time opt:" << time_opt
+             << ", time traj:" << time_sum << ", length:" << length
+             << ", jerk:" << jerk << ", mean_v:" << mean_v
+             << ", max_v:" << max_v << ", mean_a:" << mean_a
+             << ", max_a:" << max_a << "\n";
+        file.close();
+      } /* optimize traj */
 
       // displayTrajectory(coeff, false);
     }

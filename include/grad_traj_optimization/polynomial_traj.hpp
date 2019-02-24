@@ -91,6 +91,20 @@ class PolynomialTraj {
 
   double getMeanVel() { double mean_vel = length / time_sum; }
 
+  double getAccCost() {
+    double cost = 0.0;
+    int order = cxs[0].size();
+
+    for (int s = 0; s < times.size(); ++s) {
+      Eigen::Vector3d um;
+      um(0) = 2 * cxs[s][order - 3], um(1) = 2 * cys[s][order - 3],
+      um(2) = 2 * czs[s][order - 3];
+      cost += um.squaredNorm() * times[s];
+    }
+
+    return cost;
+  }
+
   double getJerk() {
     double jerk = 0.0;
 
