@@ -189,6 +189,9 @@ bool GradTrajOptimizer::optimizeTrajectory(int step) {
 
   /* optimize */
   cout << "-------------------begin optimization-------------------" << endl;
+  vec_time.clear();
+  vec_cost.clear();
+  time_start = ros::Time::now();
   nlopt::result result = optimizer.optimize(_dp, min_f);
 
   // ---------------------------display the result---------------------------
@@ -431,6 +434,17 @@ void GradTrajOptimizer::getCostAndGradient(std::vector<double> dp, double &cost,
   // get total time
   ros::Time te1 = ros::Time::now();
   total_time += (te1.toSec() - tb1.toSec());
+
+  /* evaluation */
+  double time_now = (te1 - time_start).toSec();
+  vec_time.push_back(time_now);
+  if (vec_cost.size() == 0) {
+    vec_cost.push_back(cost);
+  } else if (vec_cost.back() > cost) {
+    vec_cost.push_back(cost);
+  } else {
+    vec_cost.push_back(vec_cost.back());
+  }
 }
 
 // get position from coefficient

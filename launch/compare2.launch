@@ -2,15 +2,15 @@
   <node name="traj_opti_node1" pkg="grad_traj_optimization" type="compare2" output="screen">
     <param name="alg" value="24" type="int"/>
     <param name="time_limit_1" value="0.4" type="double"/>
-    <param name="time_limit_2" value="0.1" type="double"/>
+    <param name="time_limit_2" value="0.05" type="double"/>
     <param name="dt" value="0.2" type="double"/>
 
     <param name="ws" value="20.0" type="double"/>
     <param name="wc" value="1.0" type="double"/>
 
     <param name="alpha" value="10.0" type="double"/>
-    <param name="d0" value="0.7" type="double"/>
-    <param name="r" value="0.5" type="double"/>
+    <param name="d0" value="0.5" type="double"/>
+    <param name="r" value="1.0" type="double"/>
 
     <param name="alpha_v" value="0.0" type="double"/>
     <param name="v0" value="2.5" type="double"/>

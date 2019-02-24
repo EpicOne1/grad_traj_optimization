@@ -117,6 +117,17 @@ class GradTrajOptimizer {
   void getAccelerationPenaltyGradient(const double &acc, double &grad);
 
   void getTimeMatrix(const double &t, Eigen::MatrixXd &T);
+
+  /* for evaluation */
+  vector<double> vec_cost;
+  vector<double> vec_time;
+  ros::Time time_start;
+
+ public:
+  void getCostCurve(vector<double> &cost, vector<double> &time) {
+    cost = vec_cost;
+    time = vec_time;
+  }
 };
 
 #endif

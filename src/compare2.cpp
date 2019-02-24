@@ -156,8 +156,10 @@ int main(int argc, char **argv) {
     /* manage start and goal */
     Eigen::Vector3d start_pt, start_vel, start_acc, end_pt, end_vel;
     start_pt(0) = start_x, start_pt(1) = start_y, start_pt(2) = start_z;
-    start_vel(0) = start_vx, start_vel(1) = start_vy, start_vel(2) = start_vz;
+    // start_vel(0) = start_vx, start_vel(1) = start_vy, start_vel(2) =
+    // start_vz;
     end_pt(0) = goal_x, end_pt(1) = goal_y, end_pt(2) = goal_z;
+    start_vel.setZero();
     start_acc.setZero(), end_vel.setZero();
 
     /* path finding */
@@ -272,27 +274,47 @@ int main(int argc, char **argv) {
         poly_traj.getMeanAndMaxVel(mean_v, max_v);
         poly_traj.getMeanAndMaxAcc(mean_a, max_a);
 
-        cout << "test2:" << exp_num + 1 << ", success:" << 1
-             << ", time search:" << time_search << ", time opt:" << time_opt
-             << ", time traj:" << time_sum << ", length:" << length
-             << ", jerk:" << jerk << ", mean_v:" << mean_v
-             << ", max_v:" << max_v << ", mean_a:" << mean_a
-             << ", max_a:" << max_a << "\n";
+        vector<double> vec_time, vec_cost;
+        grad_traj_opt.getCostCurve(vec_cost, vec_time);
 
+        cout << "test2:" << exp_num + 1 << ",jerk:" << jerk;
+        cout << ",time:";
+        for (int i = 0; i < vec_time.size(); ++i) {
+          cout << vec_time[i];
+          if (i != vec_time.size() - 1) cout << ";";
+        }
+        cout << ",cost:";
+        for (int i = 0; i < vec_cost.size(); ++i) {
+          cout << vec_cost[i];
+          if (i != vec_cost.size() - 1)
+            cout << ";";
+          else
+            cout << "\n";
+        }
         std::ofstream file(
             "/home/bzhouai/workspaces/plan_ws/src/uav_planning_bm/resource/"
-            "test2.txt",
+            "back2.txt",
             std::ios::app);
         if (file.fail()) {
           cout << "open file error!\n";
           return -1;
         }
-        file << "test2:" << exp_num + 1 << ", success:" << 1
-             << ", time search:" << time_search << ", time opt:" << time_opt
-             << ", time traj:" << time_sum << ", length:" << length
-             << ", jerk:" << jerk << ", mean_v:" << mean_v
-             << ", max_v:" << max_v << ", mean_a:" << mean_a
-             << ", max_a:" << max_a << "\n";
+
+        file << "test2:" << exp_num + 1 << ",jerk:" << jerk;
+        file << ",time:";
+        for (int i = 0; i < vec_time.size(); ++i) {
+          file << vec_time[i];
+          if (i != vec_time.size() - 1) file << ";";
+        }
+        file << ",cost:";
+        for (int i = 0; i < vec_cost.size(); ++i) {
+          file << vec_cost[i];
+          if (i != vec_cost.size() - 1)
+            file << ";";
+          else
+            file << "\n";
+        }
+
         file.close();
       } /* optimize traj */
 
