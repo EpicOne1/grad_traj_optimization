@@ -264,7 +264,7 @@ int main(int argc, char **argv) {
         }
         poly_traj.init();
         vector<Eigen::Vector3d> traj_vis = poly_traj.getTraj();
-        displayPathWithColor(traj_vis, 0.1, Eigen::Vector4d(0, 1, 0, 1), 1);
+        displayPathWithColor(traj_vis, 0.2, Eigen::Vector4d(0, 0, 1, 1), 1);
 
         /* evaluation */
         double time_sum, length, mean_v, max_v, mean_a, max_a, jerk;
@@ -326,6 +326,8 @@ int main(int argc, char **argv) {
     ++exp_num;
     have_goal = false;
     if (exp_num % use_map_num == 0) have_map = false;
+
+    ros::Duration(0.5).sleep();
 
     std_msgs::Empty finish_msg;
     finish_pub.publish(finish_msg);
