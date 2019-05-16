@@ -185,50 +185,52 @@ int main(int argc, char **argv) {
 
       // visualizeSetPoints(path);
 
-      /* only for front end evaluation */
-      // double acc_cost2 = 0.0;
-      // for (int i = 0; i < Time.rows(); ++i) {
-      //   vector<double> cx(6), cy(6), cz(6);
-      //   std::fill(cx.begin(), cx.begin() + 3, 0.0);
-      //   std::fill(cy.begin(), cy.begin() + 3, 0.0);
-      //   std::fill(cz.begin(), cz.begin() + 3, 0.0);
-      //   cx[3] = Acc(i, 0) / 2.0, cy[3] = Acc(i, 1) / 2.0,
-      //   cz[3] = Acc(i, 2) / 2.0;
-      //   cx[4] = Vel(i, 0), cy[4] = Vel(i, 1), cz[4] = Vel(i, 2);
-      //   cx[5] = Pos(i, 0), cy[5] = Pos(i, 1), cz[5] = Pos(i, 2);
+      /* ============================== front end evaluation ============================== */
+      PolynomialTraj poly_traj1;
+      double acc_cost2 = 0.0;
+      for (int i = 0; i < Time.rows(); ++i) {
+        vector<double> cx(6), cy(6), cz(6);
+        std::fill(cx.begin(), cx.begin() + 3, 0.0);
+        std::fill(cy.begin(), cy.begin() + 3, 0.0);
+        std::fill(cz.begin(), cz.begin() + 3, 0.0);
+        cx[3] = Acc(i, 0) / 2.0, cy[3] = Acc(i, 1) / 2.0,
+        cz[3] = Acc(i, 2) / 2.0;
+        cx[4] = Vel(i, 0), cy[4] = Vel(i, 1), cz[4] = Vel(i, 2);
+        cx[5] = Pos(i, 0), cy[5] = Pos(i, 1), cz[5] = Pos(i, 2);
 
-      //   poly_traj.addSegment(cx, cy, cz, Time(i));
+        poly_traj1.addSegment(cx, cy, cz, Time(i));
 
-      //   /* acc cost */
-      //   acc_cost2 += Acc.row(i).squaredNorm() * Time(i);
-      // }
-      // poly_traj.init();
-      // cout << "[2]: acc cost for compare: " << acc_cost2 << endl;
+        /* acc cost */
+        acc_cost2 += Acc.row(i).squaredNorm() * Time(i);
+      }
+      poly_traj1.init();
+      cout << "[2]: acc cost for compare: " << acc_cost2 << endl;
 
-      // vector<Eigen::Vector3d> traj_vis_path = poly_traj.getTraj();
-      // displayPathWithColor(traj_vis_path, 0.1, Eigen::Vector4d(1, 1, 0, 1),
-      // 2);
+      vector<Eigen::Vector3d> traj_vis_path = poly_traj1.getTraj();
+      displayPathWithColor(traj_vis_path, 0.1, Eigen::Vector4d(1, 1, 0, 1),
+      2);
 
-      // double acc_cost = poly_traj.getAccCost();
-      // double time_sum_path = poly_traj.getTimeSum();
-      // cout << "test2:" << exp_num + 1 << "solve_time:" << time_search
-      //      << ",traj_time:" << time_sum_path << ",acc_cost:" << acc_cost
-      //      << endl;
+      double acc_cost = poly_traj1.getAccCost();
+      double time_sum_path = poly_traj1.getTimeSum();
+      cout << "test2:" << exp_num + 1 << "solve_time:" << time_search
+           << ",traj_time:" << time_sum_path << ",acc_cost:" << acc_cost
+           << endl;
 
-      // std::ofstream file(
-      //     "/home/bzhouai/workspaces/plan_ws/src/uav_planning_bm/resource/"
-      //     "front2.txt",
-      //     std::ios::app);
-      // if (file.fail()) {
-      //   cout << "open file error!\n";
-      //   return -1;
-      // }
-      // file << "test2:" << exp_num + 1 << "solve_time:" << time_search
-      //      << ",traj_time:" << time_sum_path << ",acc_cost:" << acc_cost
-      //      << "\n";
-      // file.close();
+      std::ofstream file(
+          "/home/bzhouai/workspaces/plan_ws/src/uav_planning_bm/resource/"
+          "front2.txt",
+          std::ios::app);
+      if (file.fail()) {
+        cout << "open file error!\n";
+        return -1;
+      }
+      file << "test2:" << exp_num + 1 << "solve_time:" << time_search
+           << ",traj_time:" << time_sum_path << ",acc_cost:" << acc_cost
+           << "\n";
+      file.close();
 
-      bool compare_optimize = true;
+    /* ============================== compare optimization ============================== */
+      bool compare_optimize = false;
       if (compare_optimize) {
         t1 = ros::Time::now();
         grad_traj_opt.setKinoPath(Pos, Vel, Acc, Time);
@@ -320,6 +322,7 @@ int main(int argc, char **argv) {
 
       // displayTrajectory(coeff, false);
     }
+    /* ============================== compare optimization ============================== */
 
     /* finish test flag */
     cout << "[2]: finish test." << endl;

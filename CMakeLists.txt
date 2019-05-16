@@ -28,16 +28,26 @@ include_directories(${catkin_INCLUDE_DIRS}
 include_directories(${PROJECT_SOURCE_DIR}/include)
 include_directories(${NLopt_INCLUDE_DIRS})
 
-add_executable(compare2 src/compare2.cpp 
-  src/qp_generator.cpp 
-  src/grad_traj_optimizer.cpp
+# add_executable(compare2 src/compare2.cpp 
+#   src/qp_generator.cpp 
+#   src/grad_traj_optimizer.cpp
+#   src/sdf_map.cpp
+#   src/hybrid_astar.cpp
+# )
+# target_link_libraries(compare2 ${catkin_LIBRARIES} ${NLopt_LIBRARIES} 
+#   ${PROJECT_SOURCE_DIR}
+#   ${PCL_LIBRARIES}
+#   ${PROJECT_SOURCE_DIR}/lib/libnlopt.so.0.9.0)
+
+add_executable(compare22 src/compare22.cpp 
   src/sdf_map.cpp
-  src/hybrid_astar.cpp
+  src/edt_environment.cpp
+  src/kinodynamic_astar.cpp
 )
-target_link_libraries(compare2 ${catkin_LIBRARIES} ${NLopt_LIBRARIES} 
+target_link_libraries(compare22 ${catkin_LIBRARIES} ${NLopt_LIBRARIES} 
   ${PROJECT_SOURCE_DIR}
   ${PCL_LIBRARIES}
-  ${PROJECT_SOURCE_DIR}/lib/libnlopt.so.0.9.0)
+)
 
 # add_executable(rdp_example src/rdp_example.cpp)
 # target_link_libraries(rdp_example ${catkin_LIBRARIES})
