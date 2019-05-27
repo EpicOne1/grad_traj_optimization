@@ -20,7 +20,11 @@ find_package(Eigen3 REQUIRED)
 
 find_package(PCL REQUIRED)
 
-catkin_package()
+catkin_package(
+  INCLUDE_DIRS include
+  LIBRARIES grad_opti
+  CATKIN_DEPENDS roscpp 
+)
 
 include_directories(${catkin_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIR}
@@ -39,15 +43,34 @@ include_directories(${NLopt_INCLUDE_DIRS})
 #   ${PCL_LIBRARIES}
 #   ${PROJECT_SOURCE_DIR}/lib/libnlopt.so.0.9.0)
 
-add_executable(compare22 src/compare22.cpp 
+add_library(grad_opti 
+  src/qp_generator.cpp 
+  src/grad_traj_optimizer.cpp
   src/sdf_map.cpp
-  src/edt_environment.cpp
-  src/kinodynamic_astar.cpp
 )
-target_link_libraries(compare22 ${catkin_LIBRARIES} ${NLopt_LIBRARIES} 
-  ${PROJECT_SOURCE_DIR}
-  ${PCL_LIBRARIES}
+target_link_libraries(grad_opti 
+  ${catkin_LIBRARIES} 
+  /usr/local/lib/libnlopt.so
+  )
+
+add_executable(opti_node 
+  src/opti_node.cpp 
 )
+target_link_libraries(opti_node 
+  ${catkin_LIBRARIES} 
+  grad_opti
+  # /usr/local/lib/libnlopt.so
+  )
+
+# add_executable(compare22 src/compare22.cpp 
+#   src/sdf_map.cpp
+#   src/edt_environment.cpp
+#   src/kinodynamic_astar.cpp
+# )
+# target_link_libraries(compare22 ${catkin_LIBRARIES} ${NLopt_LIBRARIES} 
+#   ${PROJECT_SOURCE_DIR}
+#   ${PCL_LIBRARIES}
+# )
 
 # add_executable(rdp_example src/rdp_example.cpp)
 # target_link_libraries(rdp_example ${catkin_LIBRARIES})

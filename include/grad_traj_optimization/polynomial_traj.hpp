@@ -45,7 +45,7 @@ class PolynomialTraj {
   Eigen::Vector3d evaluate(double t) {
     /* detetrmine segment num */
     int idx = 0;
-    while (times[idx] < t) {
+    while (times[idx] <= t) {
       t -= times[idx];
       ++idx;
     }
@@ -69,7 +69,7 @@ class PolynomialTraj {
   vector<Eigen::Vector3d> getTraj() {
     double eval_t = 0.0;
     traj_vec3d.clear();
-    while (eval_t < time_sum) {
+    while (eval_t <= time_sum) {
       Eigen::Vector3d pt = evaluate(eval_t);
       traj_vec3d.push_back(pt);
       eval_t += 0.01;

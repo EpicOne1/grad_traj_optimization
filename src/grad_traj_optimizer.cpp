@@ -207,24 +207,24 @@ bool GradTrajOptimizer::optimizeTrajectory(int step) {
   }
 
   /* reallocate segment time */
-  for (int i = 0; i < segment_time.size(); ++i) {
-    double len = 0.0;
-    // head and tail segment length
-    if (i == 0) {
-      len = sqrt(pow(Df(0, 0) - Dp(0, 0), 2) + pow(Df(1, 0) - Dp(1, 0), 2) +
-                 pow(Df(2, 0) - Dp(2, 0), 2));
-    } else if (i == segment_time.size() - 1) {
-      len = sqrt(pow(Df(0, 3) - Dp(0, 3 * (i - 1)), 2) +
-                 pow(Df(1, 3) - Dp(1, 3 * (i - 1)), 2) +
-                 pow(Df(2, 3) - Dp(2, 3 * (i - 1)), 2));
-    } else {
-      len = sqrt(pow(Dp(0, 3 * (i - 1)) - Dp(0, 3 * i), 2) +
-                 pow(Dp(1, 3 * (i - 1)) - Dp(1, 3 * i), 2) +
-                 pow(Dp(2, 3 * (i - 1)) - Dp(2, 3 * i), 2));
-    }
-    segment_time(i) = len / mean_v;
-    if (i == 0 || i == segment_time.size() - 1) segment_time(i) += init_time;
-  }
+  // for (int i = 0; i < segment_time.size(); ++i) {
+  //   double len = 0.0;
+  //   // head and tail segment length
+  //   if (i == 0) {
+  //     len = sqrt(pow(Df(0, 0) - Dp(0, 0), 2) + pow(Df(1, 0) - Dp(1, 0), 2) +
+  //                pow(Df(2, 0) - Dp(2, 0), 2));
+  //   } else if (i == segment_time.size() - 1) {
+  //     len = sqrt(pow(Df(0, 3) - Dp(0, 3 * (i - 1)), 2) +
+  //                pow(Df(1, 3) - Dp(1, 3 * (i - 1)), 2) +
+  //                pow(Df(2, 3) - Dp(2, 3 * (i - 1)), 2));
+  //   } else {
+  //     len = sqrt(pow(Dp(0, 3 * (i - 1)) - Dp(0, 3 * i), 2) +
+  //                pow(Dp(1, 3 * (i - 1)) - Dp(1, 3 * i), 2) +
+  //                pow(Dp(2, 3 * (i - 1)) - Dp(2, 3 * i), 2));
+  //   }
+  //   segment_time(i) = len / mean_v;
+  //   if (i == 0 || i == segment_time.size() - 1) segment_time(i) += init_time;
+  // }
 
   /* update optimized coefficient */
   getCoefficientFromDerivative(this->coeff, _dp);
